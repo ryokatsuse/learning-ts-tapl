@@ -8,7 +8,9 @@ type Term =
   | { tag: "add"; left: Term; right: Term }
   | { tag: "var"; name: string }
   | { tag: "func"; params: Param[]; body: Term }
-  | { tag: "call"; func: Term; args: Term[] };
+  | { tag: "call"; func: Term; args: Term[] }
+  | { tag: "seq"; body: Term; rest: Term }
+  | { tag: "const"; name: string; init: Term; rest: Term };
 type Param = { name: string; type: Type };
 
 type Type =
@@ -42,6 +44,7 @@ function typeEq(ty1: Type, ty2: Type): boolean {
 /**
  * 型チェックを行う関数
  * @param t 型チェックを行う式
+ * @param tyEnv 型環境
  * @returns 型チェックの結果
  */
 function typecheck(t: Term, tyEnv: TypeEnv): Type {
@@ -93,10 +96,19 @@ function typecheck(t: Term, tyEnv: TypeEnv): Type {
       }
       return funcTy.retType;
     }
+    case "seq": {
+      typecheck(t.body, tyEnv);
+      return typecheck(t.rest, tyEnv);
+    }
+    case "const": {
+      const ty = typecheck(t.init, tyEnv);
+      const newTyEnv = { ...tyEnv, [t.name]: ty };
+      return typecheck(t.rest, newTyEnv);
+    }
     default:
       throw new Error("unknown term");
   }
 }
 
 // 型チェックのテスト
-console.log(typecheck(parseBasic("( (x: number) => x )(true)"), {}));
+console.log(typecheck(parseBasic(`(f: (x: number) => boolean) => f`), {}));
